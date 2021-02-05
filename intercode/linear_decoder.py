@@ -85,7 +85,7 @@ class CompositeLinearDecoder(nn.Module):
     def n_inactive_terms(self):
         n = 0
         for v in self.weight_dict.values():
-            n+=(~(v.data.norm(p=2, dim=0)>0)).float().sum().numpy()
+            n+=(~(v.data.norm(p=2, dim=0)>0)).float().sum().cpu().numpy()
 
         return int(n)
 
@@ -160,7 +160,12 @@ def train_autoencoder(adata, autoencoder, lr, batch_size, num_epochs,
 
     n_inact_genes = (1-I).sum()
 
+    use_cuda = next(autoencoder.parameters()).is_cuda
+
     I = torch.from_numpy(I)
+
+    if use_cuda:
+        I = I.cuda()
 
     prox_ops = get_prox_operators(I, lambda1, lambda2, lambda3)
 
@@ -172,9 +177,14 @@ def train_autoencoder(adata, autoencoder, lr, batch_size, num_epochs,
     if test_data is None:
         t_X = torch.from_numpy(adata.X)
         comment = '-- total train loss: '
+        warning_cuda = 'Sending the whole dataset to cuda'
     else:
         t_X = test_data
         comment = '-- test loss:'
+        warning_cuda = 'Sending the validation dataset to cuda'
+    if use_cuda:
+        print(warning_cuda)
+        t_X = t_X.cuda()
     test_n_obs = t_X.shape[0]
 
     l2_loss = nn.MSELoss(reduction='sum')
@@ -190,6 +200,8 @@ def train_autoencoder(adata, autoencoder, lr, batch_size, num_epochs,
         for step, selection in enumerate(index_iter(adata.n_obs, batch_size)):
 
             X = select_X(adata, selection)
+            if use_cuda:
+                X = X.cuda()
 
             encoded, decoded = autoencoder(X)
 
@@ -203,13 +215,13 @@ def train_autoencoder(adata, autoencoder, lr, batch_size, num_epochs,
                 prox_ops[k](autoencoder.decoder.weight_dict[k].data)
 
             if step % 100 == 0:
-                print('Epoch:', epoch, '| batch train loss: %.4f' % loss.data.numpy())
+                print('Epoch:', epoch, '| batch train loss: %.4f' % loss.data.cpu().numpy())
 
         autoencoder.eval()
         t_encoded, t_decoded = autoencoder(t_X)
 
-        t_reconst = l2_loss(t_decoded, t_X).data.numpy()/test_n_obs
-        t_regul = l2_reg_lambda0*t_encoded.pow(2).sum().data.numpy()/test_n_obs
+        t_reconst = l2_loss(t_decoded, t_X).data.cpu().numpy()/test_n_obs
+        t_regul = l2_reg_lambda0*t_encoded.pow(2).sum().data.cpu().numpy()/test_n_obs
         t_loss = t_reconst + t_regul
 
         print('Epoch:', epoch, comment, '%.4f=%.4f+%.4f' % (t_loss, t_reconst, t_regul))
@@ -217,5 +229,5 @@ def train_autoencoder(adata, autoencoder, lr, batch_size, num_epochs,
         n_deact_terms = autoencoder.decoder.n_inactive_terms()
         print('Number of deactivated terms:', n_deact_terms)
 
-        n_deact_genes = (~(autoencoder.decoder.weight_dict[TERMS_KEYS[0]].data.abs()>0)&~I.bool()).float().sum().numpy()
-        print('Share of deactivated inactive genes: %.4f' % (n_deact_genes/n_inact_genes))
+        n_deact_genes = (~(autoencoder.decoder.weight_dict[TERMS_KEYS[0]].data.abs()>0)&~I.bool()).float().sum()
+        print('Share of deactivated inactive genes: %.4f' % (n_deact_genes.cpu().numpy()/n_inact_genes))
