@@ -18,6 +18,7 @@ setup(
     url="https://github.com/theislab/intercode",
     author=__author__,
     author_email=__email__,
+    license='BSD',
     packages=find_packages(),
     zip_safe=False,
     install_requires=[
