@@ -17,7 +17,7 @@ class Intercode:
         if use_cuda and torch.cuda.is_available():
             self.model.cuda()
 
-    def train(lr, batch_size, num_epochs,
+    def train(self, lr, batch_size, num_epochs,
               l2_reg_lambda0=0.1, lambda1=None, lambda2=None, lambda3=None,
               test_data=None, optim=torch.optim.Adam, **kwargs):
         if lambda1 is not None:
