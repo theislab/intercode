@@ -1,2 +1,17 @@
 Intercode - Interpretable Autoencoder
 ======================================
+
+Intercode is a package to learn interpretable latent representation of single-cell data.
+Intercode contains the implementation of the autoencoder which forces latent dimensions
+to correspond to predefined gene sets.
+
+Usage and installation
+--------------------------------------
+
+Install with pip
+
+::
+
+   pip install intercode
+
+See `the notebooks <https://github.com/theislab/intercode/tree/main/notebooks>`_ for the examples.
