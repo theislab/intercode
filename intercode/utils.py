@@ -3,6 +3,28 @@ import numpy as np
 # add binary I of size n_vars x number of annotated terms in files
 # if I[i,j]=1 then gene i is active in annotation j
 def add_annotations(adata, files, min_genes=0, max_genes=None, varm_key='I', uns_key='terms'):
+    """\
+    Add annotations to an AnnData object from files.
+
+    Parameters
+    ----------
+    adata
+        Annotated data matrix.
+    files
+        Paths to text files with annotations. The function considers rows to be gene sets
+        with name of a gene set in the first column followed by names of genes.
+    min_genes
+        Only include gene sets which have the total number of genes in adata
+        greater than this value.
+    max_genes
+        Only include gene sets which have the total number of genes in adata
+        less than this value.
+    varm_key
+        Store the binary array I of size n_vars x number of annotated terms in files
+        in `adata.varm[varm_key]`. if I[i,j]=1 then the gene i is present in the annotation j.
+    uns_key
+        Sore gene sets' names in `adata.uns[uns_key]`.
+    """
     files = [files] if isinstance(files, str) else files
     annot = []
 
