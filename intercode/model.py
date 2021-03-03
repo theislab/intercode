@@ -1,4 +1,7 @@
+import numpy as np
 import torch
+import pickle
+import os
 from .linear_decoder import AutoencoderLinearDecoder, train_autoencoder
 
 
@@ -13,6 +16,10 @@ class Intercode:
     ----------
     adata
         Annotated data matrix. It should contain annotations of genes by gene sets.
+    activs_key
+        Key for `adata.varm` where the activities binary array is stored.
+    terms_key
+        Key for `adata.uns` where the terms' names are stored.
     n_sparse
         Number of dimensions corresponding to sparse terms in the latent representation.
         These dimensions don't requre annotations.
@@ -24,7 +31,16 @@ class Intercode:
     **kwargs
         Additional arguments specifying the model architecture.
     """
-    def __init__(self, adata, n_sparse=None, n_dense=None, use_cuda=True, **kwargs):
+    def __init__(
+        self,
+        adata,
+        activs_key = 'I',
+        terms_key = 'terms',
+        n_sparse = None,
+        n_dense = None,
+        use_cuda = True,
+        **kwargs
+    ):
         if 'terms' not in adata.uns or 'I' not in adata.varm:
             raise ValueError("The AnnData object must have annotations.")
 
@@ -36,6 +52,20 @@ class Intercode:
 
         if use_cuda and torch.cuda.is_available():
             self.model.cuda()
+
+        self._annotation_params = {}
+        self._annotation_params['var_names'] = list(adata.var_names)
+        self._annotation_params['term_names'] = list(adata.uns[terms_key])
+        self._annotation_params['activities'] = adata.varm[activs_key].tolist()
+        self._annotation_params['activs_key'] = activs_key
+        self._annotation_params['terms_key'] = terms_key
+
+        self._init_params = {}
+        self._init_params['n_sparse'] = n_sparse
+        self._init_params['n_dense'] = n_dense
+        self._init_params['use_cuda'] = use_cuda
+        self._init_params.update(kwargs)
+
 
     def train(self, lr, batch_size, num_epochs,
               l2_reg_lambda0=0.1, lambda1=None, lambda2=None, lambda3=None,
@@ -75,11 +105,12 @@ class Intercode:
             lambda2 *= lr
         if lambda3 is not None:
             lambda3 *= lr
+
         train_autoencoder(self.adata, self.model, lr, batch_size, num_epochs,
                           l2_reg_lambda0, lambda1, lambda2, lambda3,
                           test_data, optim, **kwargs)
 
-    def encode(self, x):
+    def encode(self, x, term_names=None):
         """\
         Get latent representation of the input.
 
@@ -90,6 +121,9 @@ class Intercode:
         ----------
         x
             Data to be transformed.
+        term_names
+            Return only the latent dimensions corresponding to these
+            annotations' / terms' names.
 
         Returns
         ----------
@@ -99,7 +133,13 @@ class Intercode:
         using_cuda = next(self.model.parameters()).is_cuda
         if using_cuda:
             x = x.cuda()
-        return self.model.encoder(x)
+
+        if term_names is not None:
+            idx = [self.term_names.index(name) for name in term_names]
+        else:
+            idx = None
+
+        return self.model.encoder(x).detach().cpu().numpy()[:, idx]
 
     def nonzero_terms(self):
         """\
@@ -117,3 +157,83 @@ class Intercode:
         for k, v in self.model.decoder.weight_dict:
             d[k] = (v.data.norm(p=2, dim=0)>0).cpu().numpy()
         return d
+
+    @property
+    def term_names(self):
+        return self._annotation_params['term_names']
+
+    @property
+    def var_names(self):
+        return self._annotation_params['var_names']
+
+    def save(self, dir_path, overwrite=False):
+        """\
+        Save the state of the model.
+
+        Parameters
+        ----------
+        dir_path
+            Path to a directory.
+        overwrite
+            Overwrite existing data or not. If `False` and directory
+            already exists at `dir_path`, error will be raised.
+        """
+        model_path = os.path.join(dir_path, "model_params.pt")
+        annot_params_path = os.path.join(dir_path, "annot_params.pkl")
+        init_params_path = os.path.join(dir_path, "init_params.pkl")
+
+        if not os.path.exists(dir_path) or overwrite:
+            os.makedirs(dir_path, exist_ok=overwrite)
+
+        torch.save(self.model.state_dict(), model_path)
+        with open(annot_params_path, "wb") as f:
+            pickle.dump(self._annotation_params, f)
+        with open(init_params_path, "wb") as f:
+            pickle.dump(self._init_params, f)
+
+    @classmethod
+    def load(cls, dir_path, adata):
+        """\
+        Instantiate a model from the saved output.
+
+        Parameters
+        ----------
+        dir_path
+            Path to saved outputs.
+        adata
+            AnnData object with annotations.
+
+        Returns
+        ----------
+            Model with loaded state dictionaries.
+        """
+        model_path = os.path.join(dir_path, "model_params.pt")
+        annot_params_path = os.path.join(dir_path, "annot_params.pkl")
+        init_params_path = os.path.join(dir_path, "init_params.pkl")
+
+        model_state_dict = torch.load(model_path)
+
+        with open(annot_params_path, "rb") as handle:
+            annot_params = pickle.load(handle)
+
+        if len(annot_params['var_names']) != adata.n_vars:
+            raise ValueError('n_vars in the adata doesn\'t match n_vars of the model')
+        if annot_params['term_names'] != list(adata.uns[annot_params['terms_key']]):
+            raise ValueError('The terms names in the adata don\'t match '
+                             'the terms names of the model')
+
+        I = adata.varm[annot_params['activs_key']]
+        I_check = np.array(annot_params['activities'], dtype=I.dtype)
+        if not np.array_equal(I, I_check):
+            raise ValueError('The activities in the adata are not equal '
+                             'to the activities which were used to initialize '
+                             'the Intercode object.')
+
+        with open(init_params_path, "rb") as handle:
+            init_params = pickle.load(handle)
+
+        new_intercode = cls(adata, **init_params)
+        new_intercode.model.load_state_dict(model_state_dict)
+        new_intercode.model.eval()
+
+        return new_intercode
