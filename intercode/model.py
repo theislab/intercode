@@ -57,13 +57,13 @@ class Intercode:
         self._annotation_params['var_names'] = list(adata.var_names)
         self._annotation_params['term_names'] = list(adata.uns[terms_key])
         self._annotation_params['activities'] = adata.varm[activs_key].tolist()
-        self._annotation_params['activs_key'] = activs_key
-        self._annotation_params['terms_key'] = terms_key
 
         self._init_params = {}
         self._init_params['n_sparse'] = n_sparse
         self._init_params['n_dense'] = n_dense
         self._init_params['use_cuda'] = use_cuda
+        self._init_params['activs_key'] = activs_key
+        self._init_params['terms_key'] = terms_key
         self._init_params.update(kwargs)
 
 
@@ -108,7 +108,7 @@ class Intercode:
 
         train_autoencoder(self.adata, self.model, lr, batch_size, num_epochs,
                           l2_reg_lambda0, lambda1, lambda2, lambda3,
-                          test_data, optim, **kwargs)
+                          test_data, optim, self._init_params['activs_key'], **kwargs)
 
     def encode(self, x, term_names=None):
         """\
@@ -218,19 +218,13 @@ class Intercode:
 
         if len(annot_params['var_names']) != adata.n_vars:
             raise ValueError('n_vars in the adata doesn\'t match n_vars of the model')
-        if annot_params['term_names'] != list(adata.uns[annot_params['terms_key']]):
-            raise ValueError('The terms names in the adata don\'t match '
-                             'the terms names of the model')
-
-        I = adata.varm[annot_params['activs_key']]
-        I_check = np.array(annot_params['activities'], dtype=I.dtype)
-        if not np.array_equal(I, I_check):
-            raise ValueError('The activities in the adata are not equal '
-                             'to the activities which were used to initialize '
-                             'the Intercode object.')
 
         with open(init_params_path, "rb") as handle:
             init_params = pickle.load(handle)
+
+        print('Inserting terms\' names and activities to the Anndata object.')
+        adata.uns[init_params['terms_key']] = annot_params['term_names']
+        adata.varm[init_params['activs_key']] = np.array(annot_params['activities'])
 
         new_intercode = cls(adata, **init_params)
         new_intercode.model.load_state_dict(model_state_dict)

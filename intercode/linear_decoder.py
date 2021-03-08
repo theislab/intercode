@@ -152,11 +152,11 @@ def index_iter(n_obs, batch_size):
 
 def train_autoencoder(adata, autoencoder, lr, batch_size, num_epochs,
                       l2_reg_lambda0=0.1, lambda1=None, lambda2=None, lambda3=None,
-                      test_data=None, optim=torch.optim.Adam, **kwargs):
+                      test_data=None, optim=torch.optim.Adam, activs_key='I', **kwargs):
 
     optimizer = optim(autoencoder.parameters(), lr=lr, **kwargs)
 
-    I = adata.varm['I']
+    I = adata.varm[activs_key]
 
     n_inact_genes = (1-I).sum()
 
