@@ -7,6 +7,7 @@ to correspond to predefined gene sets.
 
 Usage and installation
 --------------------------------------
+Intercode requires pytorch, numpy and anndata.
 
 Install with pip
 
