@@ -134,12 +134,14 @@ class Intercode:
         if using_cuda:
             x = x.cuda()
 
+        encoded = self.model.encoder(x).detach().cpu().numpy()
+
         if term_names is not None:
             idx = [self.term_names.index(name) for name in term_names]
+            return encoded[:, idx]
         else:
-            idx = None
+            return encoded
 
-        return self.model.encoder(x).detach().cpu().numpy()[:, idx]
 
     def nonzero_terms(self):
         """\
@@ -154,7 +156,7 @@ class Intercode:
         Indices of active terms.
         """
         d = {}
-        for k, v in self.model.decoder.weight_dict:
+        for k, v in self.model.decoder.weight_dict.items():
             d[k] = (v.data.norm(p=2, dim=0)>0).cpu().numpy()
         return d
 
