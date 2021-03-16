@@ -11,7 +11,7 @@ except ImportError:  # Deps not yet installed
 
 setup(
     name="intercode",
-    version="0.0.5",
+    version="0.0.6",
     description="Interpretable Autoencoder",
     long_description=long_description,
     long_description_content_type="text/markdown",
