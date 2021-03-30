@@ -17,4 +17,4 @@ Install with pip
 
 See `the notebooks <https://github.com/theislab/intercode/tree/main/notebooks>`_ for the examples.
 
-See `the preprint <https://www.biorxiv.org/content/10.1101/2020.12.02.401182v1>`_ for description.
+Read `the preprint <https://www.biorxiv.org/content/10.1101/2020.12.02.401182v1>`_ for description.
