@@ -152,7 +152,8 @@ def index_iter(n_obs, batch_size):
 
 def train_autoencoder(adata, autoencoder, lr, batch_size, num_epochs,
                       l2_reg_lambda0=0.1, lambda1=None, lambda2=None, lambda3=None,
-                      test_data=None, optim=torch.optim.Adam, activs_key='I', **kwargs):
+                      test_data=None, optim=torch.optim.Adam, activs_key='I',
+                      print_iters=False, **kwargs):
 
     optimizer = optim(autoencoder.parameters(), lr=lr, **kwargs)
 
@@ -214,7 +215,7 @@ def train_autoencoder(adata, autoencoder, lr, batch_size, num_epochs,
             for k in term_keys:
                 prox_ops[k](autoencoder.decoder.weight_dict[k].data)
 
-            if step % 100 == 0:
+            if step % 100 == 0 and print_iters:
                 print('Epoch:', epoch, '| batch train loss: %.4f' % loss.data.cpu().numpy())
 
         autoencoder.eval()

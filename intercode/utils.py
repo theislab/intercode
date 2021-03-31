@@ -1,4 +1,5 @@
 import numpy as np
+from sklearn.linear_model import LogisticRegression
 
 # add binary I of size n_vars x number of annotated terms in files
 # if I[i,j]=1 then gene i is active in annotation j
@@ -45,3 +46,19 @@ def add_annotations(adata, files, min_genes=0, max_genes=None, varm_key='I', uns
     I = I[:, mask]
     adata.varm[varm_key] = I
     adata.uns[uns_key] = [term[0] for i, term in enumerate(annot) if i not in np.where(~mask)[0]]
+
+
+def score_logistic(latents, condition, get_accuracy=False, **kwargs):
+    clf = LogisticRegression(random_state=0, **kwargs)
+    clf.fit(latents, condition)
+    if get_accuracy:
+        return clf.score(latents, condition)
+    else:
+        coefs = {}
+        classes = clf.classes_.tolist()
+        if len(classes) == 2:
+            coefs[classes[0]] = np.ravel(clf.coef_)
+        else:
+            for i, cls in enumerate(classes):
+                coefs[cls] = clf.coef_[i]
+        return coefs

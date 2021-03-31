@@ -142,7 +142,6 @@ class Intercode:
         else:
             return encoded
 
-
     def nonzero_terms(self):
         """\
         Get indices for active terms
@@ -153,11 +152,27 @@ class Intercode:
 
         Returns
         ----------
-        Indices of active terms.
+        Dictionary of indices of active terms.
         """
         d = {}
         for k, v in self.model.decoder.weight_dict.items():
             d[k] = (v.data.norm(p=2, dim=0)>0).cpu().numpy()
+        return d
+
+    def terms_by_norm(self):
+        """\
+        Get indices of terms sorted by norm of weights in the decoder
+        in descending order.
+
+        Returns
+        ----------
+        Dcitionary of sorted indices of terms.
+        """
+        d = {}
+        for k, v in self.model.decoder.weight_dict.items():
+            terms_norms = v.data.norm(p=2, dim=0).cpu().numpy()
+            inds = np.argsort(terms_norms)[::-1]
+            d[k] = inds
         return d
 
     @property
