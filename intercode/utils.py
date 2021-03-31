@@ -64,7 +64,6 @@ def score_logistic(latents, condition, get_accuracy=False, **kwargs):
     ----------
     Dcitionary of coefficients for each class or accuracy.
     """
-    """
     clf = LogisticRegression(random_state=0, **kwargs)
     clf.fit(latents, condition)
     if get_accuracy:
