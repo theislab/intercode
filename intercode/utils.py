@@ -49,6 +49,22 @@ def add_annotations(adata, files, min_genes=0, max_genes=None, varm_key='I', uns
 
 
 def score_logistic(latents, condition, get_accuracy=False, **kwargs):
+    """\
+    Train logistic regression and return coefficients or accuracy.
+
+    Parameters
+    ----------
+    get_accuracy
+        Return accuracy (`sklearn.linear_model.LogisticRegression.score`) instead
+        of coefficients.
+    **kwargs
+        Additional arguments for `sklearn.linear_model.LogisticRegression`.
+
+    Returns
+    ----------
+    Dcitionary of coefficients for each class or accuracy.
+    """
+    """
     clf = LogisticRegression(random_state=0, **kwargs)
     clf.fit(latents, condition)
     if get_accuracy:
