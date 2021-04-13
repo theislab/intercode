@@ -201,6 +201,10 @@ class Intercode:
 
         if not os.path.exists(dir_path) or overwrite:
             os.makedirs(dir_path, exist_ok=overwrite)
+        else:
+            raise ValueError(
+                f"{dir_path} already exists. Please provide an unexisting directory for saving."
+            )
 
         torch.save(self.model.state_dict(), model_path)
         with open(annot_params_path, "wb") as f:
